@@ -1,126 +1,140 @@
-let localStream;
-let peerConnection;
-const signalingServerUrl = "ws://127.0.0.1:3030/signaling";
-let signalingSocket;
-const remoteStreams = {};
 
-document.getElementById("join").addEventListener("click", async () => {
-    const room = document.getElementById("room").value;
-    if (!room) {
-        alert("Please enter a room name");
-        return;
-    }
 
-    signalingSocket = new WebSocket(signalingServerUrl);
-    signalingSocket.onopen = () => {
-        signalingSocket.send(JSON.stringify({ type: "join", room }));
-    };
+const servers = {
+  iceServers: [
+    {
+      urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'],
+    },
+  ],
+  iceCandidatePoolSize: 10,
+};
 
-    signalingSocket.onmessage = async (message) => {
-        const data = JSON.parse(message.data);
-        switch (data.type) {
-            case "offer":
-                await handleOffer(data.offer, data.sender);
-                break;
-            case "answer":
-                await handleAnswer(data.answer);
-                break;
-            case "candidate":
-                await handleCandidate(data.candidate);
-                break;
-            default:
-                break;
-        }
-    };
+// Global State
+const pc = new RTCPeerConnection(servers);
+let localStream = null;
+let remoteStream = null;
+let ws; // WebSocket connection
 
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    addVideoStream("localVideo", localStream, true);
+// HTML elements
+const webcamButton = document.getElementById('webcamButton');
+const webcamVideo = document.getElementById('webcamVideo');
+const callButton = document.getElementById('callButton');
+const callInput = document.getElementById('callInput');
+const answerButton = document.getElementById('answerButton');
+const remoteVideo = document.getElementById('remoteVideo');
+const hangupButton = document.getElementById('hangupButton');
 
-    // Enable control buttons
-    document.getElementById("start").disabled = false;
-    document.getElementById("stop").disabled = false;
-});
+// Initialize WebSocket connection
+function initWebSocket() {
+  ws = new WebSocket('ws://127.0.0.1:3030/signaling');
 
-document.getElementById("start").addEventListener("click", () => {
-    startSession();
-});
+  ws.onopen = () => {
+    console.log('WebSocket connection established.');
+  };
 
-document.getElementById("stop").addEventListener("click", () => {
-    stopSession();
-});
+  ws.onmessage = (event) => {
+    console.log('Message received from server:', event.data);
+    handleSignalingMessage(JSON.parse(event.data));
+  };
 
-async function startSession() {
-    if (!peerConnection) {
-        peerConnection = createPeerConnection();
-    }
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    signalingSocket.send(JSON.stringify({ type: "offer", offer }));
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket connection closed.');
+  };
 }
 
-function stopSession() {
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
-    localStream.getTracks().forEach(track => track.stop());
-    clearVideoStreams();
-    document.getElementById("start").disabled = true;
-    document.getElementById("stop").disabled = true;
+// Handle signaling messages from server
+function handleSignalingMessage(message) {
+  switch (message.type) {
+    case 'answer':
+      console.log('Answer received from remote peer:', message.sdp);
+      pc.setRemoteDescription(new RTCSessionDescription(message.sdp));
+      break;
+    case 'candidate':
+      console.log('ICE candidate received from remote peer:', message.candidate);
+      pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+      break;
+    default:
+      console.error('Unknown signaling message type:', message.type);
+  }
 }
 
-async function handleOffer(offer, sender) {
-    peerConnection = createPeerConnection();
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    signalingSocket.send(JSON.stringify({ type: "answer", answer }));
-}
+// 1. Setup media sources
+webcamButton.onclick = async () => {
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  remoteStream = new MediaStream();
 
-function createPeerConnection() {
-    const pc = new RTCPeerConnection();
-    pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            signalingSocket.send(JSON.stringify({ type: "candidate", candidate: event.candidate }));
-        }
-    };
-    pc.ontrack = (event) => {
-        const stream = event.streams[0];
-        const streamId = event.track.id;
-        if (!remoteStreams[streamId]) {
-            remoteStreams[streamId] = stream;
-            addVideoStream(streamId, stream);
-        }
-    };
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    return pc;
-}
+  // Push tracks from local stream to peer connection
+  localStream.getTracks().forEach((track) => {
+    pc.addTrack(track, localStream);
+    console.log('Local track added:', track);
+  });
 
-async function handleAnswer(answer) {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-}
-
-async function handleCandidate(candidate) {
-    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-}
-
-function addVideoStream(id, stream, isLocal = false) {
-    const videoContainer = document.getElementById("videos");
-    const videoElement = document.createElement("video");
-    videoElement.id = id;
-    videoElement.srcObject = stream;
-    videoElement.autoplay = true;
-    if (isLocal) {
-        videoElement.muted = true;
-    }
-    videoContainer.appendChild(videoElement);
-}
-
-function clearVideoStreams() {
-    const videoContainer = document.getElementById("videos");
-    videoContainer.innerHTML = "";
-    Object.keys(remoteStreams).forEach(streamId => {
-        remoteStreams[streamId].getTracks().forEach(track => track.stop());
+  // Pull tracks from remote stream, add to video stream
+  pc.ontrack = (event) => {
+    event.streams[0].getTracks().forEach((track) => {
+      remoteStream.addTrack(track);
+      console.log('Remote track added:', track);
     });
-    remoteStreams = {};
-}
+  };
+
+  webcamVideo.srcObject = localStream;
+  remoteVideo.srcObject = remoteStream;
+
+  callButton.disabled = false;
+  answerButton.disabled = false;
+  webcamButton.disabled = true;
+};
+
+// 2. Create an offer
+callButton.onclick = async () => {
+  console.log('Creating offer...');
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      console.log('Sending ICE candidate:', event.candidate);
+      ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+    }
+  };
+
+  const offerDescription = await pc.createOffer();
+  await pc.setLocalDescription(offerDescription);
+  console.log('Offer created:', offerDescription);
+
+  // Send offer to server
+  ws.send(JSON.stringify({ type: 'offer', sdp: offerDescription }));
+
+  hangupButton.disabled = false;
+};
+
+// 3. Answer the call with the unique ID
+answerButton.onclick = async () => {
+  const callId = callInput.value;
+  console.log('Answering call with ID:', callId);
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      console.log('Sending ICE candidate:', event.candidate);
+      ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+    }
+  };
+
+  // In a real application, you'd retrieve the offer from a signaling server
+  // Here we are directly setting the remote description from the input call ID
+  const offer = { /* Insert the offer you received from the caller */ };
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+  const answerDescription = await pc.createAnswer();
+  await pc.setLocalDescription(answerDescription);
+  console.log('Answer created:', answerDescription);
+
+  // Send answer to server
+  ws.send(JSON.stringify({ type: 'answer', sdp: answerDescription }));
+};
+
+// Initialize WebSocket connection on page load
+window.onload = () => {
+  initWebSocket();
+};

@@ -1,19 +1,55 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rust WebRTC.rs Application</title>
+    <title>WebRTC Client</title>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .videos {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        video {
+            width: 400px;
+            background: #2f2f2f;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #callInput {
+            flex: 1;
+        }
+    </style>
 </head>
 <body>
-    <h1>Rust WebRTC.rs Application</h1>
-    <div>
-        <input type="text" id="room" placeholder="Enter room name">
-        <button id="join">Join</button>
-        <button id="start" disabled>Start</button>
-        <button id="stop" disabled>Stop</button>
+    <div class="container">
+        <h1>WebRTC Video Chat</h1>
+        <div class="videos">
+            <video id="webcamVideo" autoplay playsinline muted></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="controls">
+            <button id="webcamButton">Enable Webcam</button>
+            <input type="text" id="callInput" placeholder="Enter Call ID" />
+            <button id="callButton" disabled>Call</button>
+            <button id="answerButton" disabled>Answer</button>
+            <button id="hangupButton" disabled>Hang Up</button>
+        </div>
+        <div id="status"></div>
     </div>
-    <div id="videos"></div>
     <script src="app.js"></script>
 </body>
 </html>
