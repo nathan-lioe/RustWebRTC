@@ -6,14 +6,12 @@
     <title>Rust WebRTC.rs Application</title>
 </head>
 <body>
-    <h1>Rust WebRTC.rs Application</h1>
-    <div>
-        <input type="text" id="room" placeholder="Enter room name">
-        <button id="join">Join</button>
-        <button id="start" disabled>Start</button>
-        <button id="stop" disabled>Stop</button>
-    </div>
-    <div id="videos"></div>
+    <h2>Rust WebRTC.rs Application</h2>
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+    <button id="startCall">Start Call</button>
+    <button id="answerCall">Answer Call</button>
+
     <script src="app.js"></script>
 </body>
 </html>

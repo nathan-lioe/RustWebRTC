@@ -4,16 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-webrtc = "0.6"  # Replace with the correct version of webrtc-rs or your WebRTC library
-tokio = { version = "1", features = ["full"] }
 warp = "0.3"
-futures-util = "0.3"
-tracing = "0.1"
-tokio-tungstenite = "0.16"
-tracing-subscriber = "0.2"
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
+futures-util = "0.3"
 serde_json = "1.0"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4"] }  # Add uuid with v4 feature for random UUID generation
+
+
 
 
 
