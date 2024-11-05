@@ -1,7 +1,15 @@
 [package]
-name = "webrtc_app"
+name = "webrtc-streaming"
 version = "0.1.0"
 edition = "2021"
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs"
 
 [dependencies]
 warp = "0.3"
@@ -10,7 +18,9 @@ serde = { version = "1.0", features = ["derive"] }
 futures-util = "0.3"
 serde_json = "1.0"
 uuid = { version = "1", features = ["v4"] }  # Add uuid with v4 feature for random UUID generation
-
+tokio-tungstenite = "0.19"
+anyhow = "1.0"
+webrtc = "0.7"
 
 
 
