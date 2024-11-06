@@ -8,8 +8,8 @@ name = "server"
 path = "src/bin/server.rs"
 
 [[bin]]
-name = "client"
-path = "src/bin/client.rs"
+name = "streamer"
+path = "src/bin/streamer.rs"
 
 [dependencies]
 warp = "0.3"
