@@ -21,6 +21,7 @@ uuid = { version = "1", features = ["v4"] }  # Add uuid with v4 feature for rand
 tokio-tungstenite = "0.19"
 anyhow = "1.0"
 webrtc = "0.7"
+notify= "6.1"
 
 
 

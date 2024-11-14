@@ -1,10 +1,13 @@
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::{fs::File, io::BufReader, time::Duration};
+use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
+
 use webrtc::{
     api::{
         interceptor_registry::register_default_interceptors,
@@ -146,9 +149,8 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Start streaming video
     println!("Starting video stream...");
-    write_video_to_track("video.ivf", video_track).await?;
+    watchand_stream_video("./ivf_files", video_track).await?;
 
     Ok(())
 }
@@ -174,4 +176,53 @@ async fn write_video_to_track(path: &str, track: Arc<TrackLocalStaticSample>) ->
             .await?;
         ticker.tick().await;
     }
+}
+
+//File watcher
+async fn watchand_stream_video(directory: &str, track: Arc<TrackLocalStaticSample>) -> Result<()> {
+    // Create a channel for file events
+    let (tx, mut rx) = mpsc::channel(100);
+
+    // Create an async file watcher
+    let mut watcher = RecommendedWatcher::new(
+        move |res| {
+            if let Ok(event) = res {
+                tx.blocking_send(event).expect("Failed to send event");
+            }
+        },
+        Config::default(),
+    )?;
+
+    // Start watching the specified directory
+    watcher.watch(std::path::Path::new(directory), RecursiveMode::NonRecursive)?;
+
+    println!("Watching directory: {}", directory);
+
+    let mut current_file = String::new();
+
+    // Event loop
+    while let Some(event) = rx.recv().await {
+        if let Event {
+            kind: EventKind::Modify(_),
+            paths,
+            ..
+        } = event
+        {
+            for path in paths {
+                if let Some(ext) = path.extension() {
+                    if ext == "ivf" {
+                        println!("Detected change in file: {:?}", path);
+                        current_file = path.to_string_lossy().to_string();
+                        if let Err(e) =
+                            write_video_to_track(&current_file, Arc::clone(&track)).await
+                        {
+                            println!("Error streaming video: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

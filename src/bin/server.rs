@@ -13,6 +13,8 @@ type Peers = Arc<Mutex<HashMap<String, Arc<Mutex<SplitSink<WebSocket, Message>>>
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "lowercase")]
+
+// Handle offers 
 enum SignalingMessage {
     Offer {
         sdp: String,
