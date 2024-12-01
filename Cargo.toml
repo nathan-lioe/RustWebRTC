@@ -22,6 +22,7 @@ tokio-tungstenite = "0.19"
 anyhow = "1.0"
 webrtc = "0.7"
 notify= "6.1"
+base64 = "0.21" 
 
 
 
