@@ -27,7 +27,7 @@ python3 -m http.server 8000
 - This command starts a server at http://localhost:8000
 
 --- 
-### **Yay you're almost there!**
+### **Yay you're almost there!!**
 
 Open the application in a browser via:
 
